@@ -1,5 +1,6 @@
 /////////////////////// Line Sensor Setup ////////////////////////
 #define LINE_DETECT_WHITE  1  
+int Missioin_flag[5]={0,};
 int LineSensorPin[5] = {34,35,36,37,38};
 int LineSensorPinData[5] = {0,};
 int LineType = -1;
@@ -27,7 +28,7 @@ void motor_control_l(int direction, int speed)
   {
     case 1: digitalWrite(IN1, LOW);
             digitalWrite(IN2, HIGH);
-            analogWrite(ENA, speed); // 0-255까지 입력 
+            analogWrite(ENA, 150); // 0-255까지 입력 
             break;
 
     case 0: digitalWrite(IN1, LOW);
@@ -37,7 +38,7 @@ void motor_control_l(int direction, int speed)
      
     case -1: digitalWrite(IN1, HIGH);
              digitalWrite(IN2, LOW);
-             analogWrite(ENA, speed);
+             analogWrite(ENA, 50);
              break;
   }
 }
@@ -47,7 +48,7 @@ void motor_control_r(int direction, int speed)
   {
     case 1: digitalWrite(IN3, HIGH);
             digitalWrite(IN4, LOW);
-            analogWrite(ENA, speed); // 0-255까지 입력 
+            analogWrite(ENA, 50); // 0-255까지 입력 
             break;
 
     case 0: digitalWrite(IN3, LOW);
@@ -57,7 +58,7 @@ void motor_control_r(int direction, int speed)
      
     case -1: digitalWrite(IN1, LOW);
              digitalWrite(IN2, HIGH);
-             analogWrite(ENA, speed);
+             analogWrite(ENA, 50);
              break;
   }
 }
@@ -176,11 +177,54 @@ void motor_control(int dir_A, int pwm_A , int dir_B, int pwm_B)
      digitalWrite(IN3, LOW);  digitalWrite(IN4, HIGH); 
      analogWrite(ENB,pwm_B);    
    }
-   else
+   else                                
    {
      digitalWrite(IN3, 0);  digitalWrite(IN4, 0); 
      analogWrite(ENB,0);
    }
+}
+
+void robot_line_trace(void)
+{
+  switch(LineType)
+  {
+
+     case -4 :          
+              motor_control(-1, 50 , 1, 120);
+              break;            
+             
+     case -3 :
+              motor_control(1, 59 , 1, 106);
+              break;
+     case -2 :
+              motor_control(1, 60 , 1, 100);
+              break;
+     case -1 :
+              motor_control(1, 70 , 1, 90);
+              break;              
+     case 0 :
+              motor_control(1, 75 , 1, 80);
+              break;                                                                                                                                                                                                                 
+     case 1 :
+              motor_control(1, 84 , 1, 75);
+              break;
+     case 2 :
+              motor_control(1, 98 , 1, 68);
+              break;
+     case 3 :
+              motor_control(1, 106 , 1, 59);
+              break; 
+     case 4 :
+              motor_control(1, 120 , -1, 50);
+              break;              
+
+     case 5 : 
+               motor_control(-1,30, -1,35);
+               delay(500);
+               motor_control(0, 0 , 0, 0);
+               delay(1000);
+               break;    
+  }  
 }
 void setup() {
   // put your setup code here, to run once:
@@ -203,44 +247,70 @@ void setup() {
  pinMode(IN4, OUTPUT);
  pinMode(ENA, OUTPUT);
  pinMode(ENB, OUTPUT); 
-  int i;
- ///// line sensor setup /////
- for(i=0;i<5;i++)
- {
-    pinMode(LineSensorPin[i], INPUT);
- }
- 
- ///// sonar sensor setup /////
- pinMode(TRIG, OUTPUT);
- pinMode(ECHO, INPUT);
- Serial.begin(115200);
-//// motor drive setup //////
- pinMode(IN1, OUTPUT);
- pinMode(IN2, OUTPUT);
- pinMode(IN3, OUTPUT);
- pinMode(IN4, OUTPUT);
- pinMode(ENA, OUTPUT);
- pinMode(ENB, OUTPUT); 
-
- while(read_digital_line_sensor()!=5)
- {
-  Serial.println("Wait!");
- }
- Serial.println("Start Line!");
- Missioin_flag[0] = 1;
- delay(1000);
- motor_control(1, 50 , 1, 45);
- delay(200); 
+}
+void robot_stop(void)
+{
+   motor_control(-1,30, -1,35);
+   delay(100);
+   motor_control(0, 0 , 0, 0);
+   delay(3000);  
 }
 
-
 void loop() {
+  // put your main code here, to run repeatedly:
+  if(Missioin_flag[4]==0)
+  {  
+
+    LineType = read_digital_line_sensor();
+    robot_line_trace();   
+  //send_serial_data();
+  }
+
+  if((Missioin_flag[0]==1) && (Missioin_flag[1]==0) && (Missioin_flag[2]==0) && (Missioin_flag[3]==0) && (Missioin_flag[4]==0) )
+  {   
+    if(LineType == 5) 
+    {
+
+      Missioin_flag[1] = 1;
+      robot_stop();   
+    }
+  }
+
+  if( (Missioin_flag[0]==1) && (Missioin_flag[1]==1) && (Missioin_flag[2]==0) && (Missioin_flag[3]==0)&& (Missioin_flag[4]==0) )
+  {  
+    if(LineType == 5) 
+    {
+    
+      Missioin_flag[2] = 1;
+    }
+  }
+  
+  if( (Missioin_flag[0]==1) && (Missioin_flag[1]==1) && (Missioin_flag[2]==1) && (Missioin_flag[3]==0)&& (Missioin_flag[4]==0) )
+  {  
+    sonar1_data = sonar();
+    if(sonar1_data < 10.0)
+    {
+        robot_stop();
+    }   
+    if(LineType == 6) 
+    {
+      Missioin_flag[3]=1;
+    }       
+  }  
+
+  if( (Missioin_flag[0]==1) && (Missioin_flag[1]==1) && (Missioin_flag[2]==1) && (Missioin_flag[3]==1)&& (Missioin_flag[4]==0) )
+  { 
+     if(LineType == 5)
+     {
+        robot_stop(); 
+        Missioin_flag[4]=1;    
+     }
+  }  
   // put your main code here, to run repeatedly:
   
   sonar1_data = sonar();
   LineType = read_digital_line_sensor();
   send_serial_data();
-  motor_control(1,50,-1,30);
-  motor_control_l(1,50);
+
      
 }
